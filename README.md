@@ -18,21 +18,22 @@ AI provider.
 - Node.js 22 or newer
 - Python 3.11 or newer with `venv` support
 - A DeepSeek API key (text only)
-- An Azure Speech key and region (Mandarin TTS)
+- Roughly 400 MB of disk for the local Kokoro TTS model (downloaded during setup)
 
 ## Setup
 
 ```bash
 npm install
 npm run ocr:setup   # creates ocr/.venv and installs RapidOCR + pypinyin
+npm run tts:setup   # creates tts/.venv, installs Kokoro, downloads the model
 cp .env.example .env
 # fill in the keys in .env
 npm run dev
 ```
 
-`npm run dev` starts three processes: the Express API on port 3001, the Vite
-client on port 5173, and the OCR sidecar on port 7861. Open the client URL on
-your phone (same network) or on your computer.
+`npm run dev` starts four processes: the Express API on port 3001, the Vite
+client on port 5173, the OCR sidecar on port 7861, and the TTS sidecar on port
+7862. Open the client URL on your phone (same network) or on your computer.
 
 If `npm run ocr:setup` cannot find a Python with `venv` support, point it at one
 explicitly:
@@ -40,6 +41,12 @@ explicitly:
 ```bash
 OCR_PYTHON=/path/to/python3 npm run ocr:setup
 ```
+
+The same applies to the TTS sidecar with `TTS_PYTHON`. `npm run tts:setup` tries
+the hf-mirror copy first and falls back to the GitHub release when the mirror is
+unreachable; `KOKORO_MIRROR_BASE_URL`, `KOKORO_MODEL_BASE_URL`,
+`KOKORO_MODEL_URL`, and `KOKORO_VOICES_URL` override the sources. See
+[docs/tts.md](docs/tts.md).
 
 ## Environment variables
 
@@ -53,9 +60,11 @@ All variables are server-side only.
 | `OCR_URL` | Local OCR sidecar; defaults to `http://127.0.0.1:7861` |
 | `OCR_PORT` | Port the sidecar listens on; defaults to `7861` |
 | `OCR_HOST` | Sidecar bind address; defaults to `127.0.0.1` |
-| `AZURE_SPEECH_KEY` | Azure Speech key used by `/api/tts` |
-| `AZURE_SPEECH_REGION` | Azure Speech region, e.g. `westeurope` |
-| `AZURE_SPEECH_VOICE` | Voice name; defaults to `zh-CN-XiaoxiaoNeural` |
+| `TTS_URL` | Local Kokoro sidecar used by `/api/tts`; defaults to `http://127.0.0.1:7862` |
+| `TTS_PORT` | Port the sidecar listens on; defaults to `7862` |
+| `TTS_HOST` | Sidecar bind address; defaults to `127.0.0.1` |
+| `TTS_VOICE` | Kokoro voice id; defaults to `zf_xiaoxiao` |
+| `TTS_SPEED` | Speech rate from 0.5 to 2.0; defaults to `1` |
 | `PORT` | Express port; defaults to `3001` |
 
 Do not prefix any of these with `VITE_`; Vite exposes `VITE_*` variables to the
@@ -67,16 +76,20 @@ browser.
   and no further. The OCR sidecar reads it on the same machine.
 - Only the recognized Chinese text is sent to DeepSeek. The image bytes are not
   part of that request, and the API code never forwards them.
-- Audio and cards stay in the browser's on-device database. Provider keys stay
-  on the server.
+- Audio and cards stay in the browser's on-device database. The DeepSeek key
+  stays on the server.
+- Pronunciation audio is synthesized locally by the Kokoro sidecar; the card
+  text is not sent to a text-to-speech provider.
 
 ## Scripts
 
 | Script | What it does |
 | --- | --- |
-| `npm run dev` | API, client, and OCR sidecar together |
-| `npm run ocr:setup` | Create `ocr/.venv` and install the sidecar's dependencies |
+| `npm run dev` | API, client, and both sidecars together |
+| `npm run ocr:setup` | Create `ocr/.venv` and install the OCR sidecar's dependencies |
 | `npm run ocr:dev` | Run the OCR sidecar alone |
+| `npm run tts:setup` | Create `tts/.venv`, install Kokoro, and download the model |
+| `npm run tts:dev` | Run the TTS sidecar alone |
 | `npm run build` | Build the client into `dist/` |
 | `npm start` | Serve the built client and API from one Express process |
 | `npm run typecheck` | Type-check client and server |
@@ -89,15 +102,16 @@ browser.
 
 ```bash
 npm run build
-npm run ocr:dev &   # or run it under systemd/supervisor
+npm run ocr:dev &   # or run both under systemd/supervisor
+npm run tts:dev &
 npm start
 ```
 
 One Express process serves the built client from `dist/` and exposes the API;
-the Python sidecar is a second process that must run alongside it on the same
-host. Deploy both to any host that can run Node and Python (Render, Railway,
-Fly, or a VPS) with the environment variables above. HTTPS is required for
-installing the PWA.
+the two Python sidecars must run alongside it on the same host. Deploy all three
+to any host that can run Node and Python (Render, Railway, Fly, or a VPS) with
+the environment variables above, and run `npm run ocr:setup && npm run
+tts:setup` once on the host. HTTPS is required for installing the PWA.
 
 ## Install and backup
 

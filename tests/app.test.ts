@@ -117,7 +117,7 @@ describe('POST /api/tts', () => {
     const response = await request(app).post('/api/tts').send(body).buffer(true)
 
     expect(response.status).toBe(200)
-    expect(response.headers['content-type']).toContain('audio/mpeg')
+    expect(response.headers['content-type']).toContain('audio/wav')
     expect(Buffer.isBuffer(response.body)).toBe(true)
     expect(response.body).toEqual(Buffer.from([1, 2, 3]))
     expect(synthesizeSpeech).toHaveBeenCalledWith(body)
@@ -145,16 +145,16 @@ describe('POST /api/tts', () => {
     expect(response.status).toBe(415)
   })
 
-  it('reports missing configuration', async () => {
+  it('reports an unavailable sidecar', async () => {
     const synthesizeSpeech = vi.fn(async () => {
-      throw new AppError(503, 'TTS_NOT_CONFIGURED', 'missing key')
+      throw new AppError(503, 'TTS_UNAVAILABLE', 'sidecar down')
     })
     const app = createApp({ synthesizeSpeech })
 
     const response = await request(app).post('/api/tts').send(body)
 
     expect(response.status).toBe(503)
-    expect(response.body.error.code).toBe('TTS_NOT_CONFIGURED')
+    expect(response.body.error.code).toBe('TTS_UNAVAILABLE')
   })
 
   it('reports provider failure', async () => {

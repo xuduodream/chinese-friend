@@ -11,9 +11,12 @@ coverage/
 .env.*
 !.env.example
 
-# Python OCR sidecar
+# Python sidecars
 ocr/.venv/
 ocr/.deps/
+tts/.venv/
+tts/.deps/
+tts/models/
 __pycache__/
 *.py[cod]
 

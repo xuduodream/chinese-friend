@@ -77,7 +77,7 @@ export function createApp(deps: AppDependencies = {}): Express {
 
     try {
       const audio = await synthesizeSpeech(request.data)
-      res.setHeader('Content-Type', 'audio/mpeg')
+      res.setHeader('Content-Type', 'audio/wav')
       res.setHeader('Cache-Control', 'no-store')
       res.send(audio)
     } catch (error) {

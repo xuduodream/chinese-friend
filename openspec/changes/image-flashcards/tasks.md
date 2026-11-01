@@ -16,9 +16,9 @@
 
 ## 3. Audio API
 
-- [ ] 3.1 Spike the chosen Mandarin TTS voice: confirm pronunciation control for a polyphonic word and a sentence, and record the provider, voice, and request syntax in `docs/tts.md`; verify saved sample audio for the polyphonic word reads the intended pronunciation
-- [x] 3.2 Implement `POST /api/tts` to return audio for a card's `reading`, using the verified pronunciation syntax with a plain-text fallback; verify unit tests cover success and provider failure
-- [ ] 3.3 Document the TTS contract and fallback behavior in `docs/api.md`; verify the documented request produces playable audio
+- [x] 3.1 Spike the Kokoro Chinese voice: install the sidecar, synthesize the polyphone cases (`行` as `xing2`, `银行` as `yin2 hang2`) from `reading`, and record the chosen voice, model, and sample rate in `docs/tts.md`; verify saved sample audio reads the intended pronunciation
+- [x] 3.2 Implement the local Kokoro sidecar and `POST /api/tts`: numbered reading → IPA via misaki with a Chinese-text fallback, a health check, typed unavailability/error responses, and `audio/wav`; verify unit tests cover success, provider failure, and an unavailable sidecar, and that `tts:setup` downloads the model
+- [x] 3.3 Document the TTS contract and fallback behavior in `docs/api.md`; verify the documented request produces playable audio
 
 ## 4. Capture UI and local card store
 

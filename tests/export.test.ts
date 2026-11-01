@@ -18,7 +18,7 @@ const draft: Draft = {
 
 function sampleCard() {
   const card = createCardFromDraft(draft, new Date('2026-01-01T09:00:00Z'), 'card-1')
-  card.audioBlob = new Blob(['fake audio'], { type: 'audio/mpeg' })
+  card.audioBlob = new Blob(['fake audio'], { type: 'audio/wav' })
   card.audioStatus = 'ready'
   card.srs = gradeSrs(card.srs, 'good', new Date('2026-01-02T09:00:00Z'))
   card.srs.lastGrade = 'good'

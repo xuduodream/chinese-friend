@@ -43,7 +43,7 @@ An installable web app gives one codebase, instant updates, home-screen presence
 
 ### 2. Vue 3 + Vite + Express, TypeScript and Tailwind
 
-The app is split into three plain pieces in one repo: a Vue 3 single-page client built with Vite (`src/`), a small Express server (`server/`) that holds the provider keys and exposes `/api/analyze` and `/api/tts`, and a local Python OCR sidecar (`ocr/`) that the Express server calls over localhost. In production the Express process also serves the built client, so one Node service plus one Python sidecar is one deployment. This is deliberately explicit — no server/client component boundary, no auto-imports, and imports are visible in every file — because a beginner should be able to read the code and follow where each piece runs.
+The app is split into four plain pieces in one repo: a Vue 3 single-page client built with Vite (`src/`), a small Express server (`server/`) that holds the provider keys and exposes `/api/analyze` and `/api/tts`, a local Python OCR sidecar (`ocr/`), and a local Kokoro TTS sidecar (`tts/`), both called by the Express server over localhost. In production the Express process also serves the built client, so one Node service plus two Python sidecars is one deployment. This is deliberately explicit — no server/client component boundary, no auto-imports, and imports are visible in every file — because a beginner should be able to read the code and follow where each piece runs.
 
 Client pieces are intentionally few: `vue-router` for the capture and review screens, `vite-plugin-pwa` for the manifest and service worker, Tailwind for styling. The server can run on Render, Railway, Fly, or any VPS; if a serverless host is preferred later, the same two handlers can move to platform functions without changing the client.
 
@@ -65,13 +65,15 @@ Measured on the target machine (aarch64 Debian PRoot, Snapdragon 8 Elite): Rapid
 
 ### 4. TTS with pronunciation control, cached per card
 
-`POST /api/tts` takes the card's `reading` and returns Mandarin audio. The design assumes a provider that accepts an explicit reading — Azure Neural `zh-CN` with SSML phoneme overrides taking pinyin is the primary candidate — precisely because isolated-word cards are where context-free TTS guesses wrong. If the chosen voice cannot take pinyin phonemes, the fallback is plain-text synthesis of the full `chinese` value, which is acceptable for sentences but weaker for single words; that is why the primary path matters.
+`POST /api/tts` takes the card's `reading` and `chinese` and returns Mandarin audio from a long-lived local Python sidecar (`tts/`) running Kokoro-82M on ONNX Runtime. Kokoro is Apache-2.0, needs no API key or account, and runs on the same machine as the OCR sidecar.
 
-The audio is stored as a blob with the card, not as a URL. Cached blobs make offline review work and avoid re-billing on replay. A regenerate action covers both wrong synthesis and missing audio.
+Pronunciation is still driven by `reading`, not guessed from the text. Cards store syllable-separated, numbered pinyin (`yin2 hang2`). The sidecar converts each syllable to IPA with `misaki.zh.ZHG2P.py2ipa` and hands the phoneme string to `kokoro.create(..., is_phonemes=True)`, so an isolated `行` is spoken exactly as the reading says. If the reading is missing or a syllable cannot be converted, the sidecar falls back to Kokoro's Chinese text front end (`ZHG2P`, jieba + pypinyin), which is acceptable for sentences but can guess wrong on a single polyphonic character.
 
-*Alternatives:* browser `SpeechSynthesis` (free, zero infra, but voice availability and tone quality vary wildly by device and it cannot be corrected); ElevenLabs (excellent quality, no phoneme-level control needed for some cases, higher cost); OpenAI TTS (simple, good quality, instructions-only pronunciation control).
+The audio is stored as a WAV blob with the card, not as a URL. Cached blobs make offline review work and avoid re-synthesis on replay. A regenerate action covers both wrong synthesis and missing audio.
 
-*Spike:* verify pinyin phoneme support on the chosen voice before committing to provider-specific SSML. This does not change the approach, only the request format.
+*Alternatives:* Azure Neural `zh-CN` with SAPI phoneme overrides (excellent quality and proven pronunciation control, but requires an Azure account and key, and in mainland China a separate 21Vianet subscription with different endpoints); browser `SpeechSynthesis` (free, zero infra, but voice availability and tone quality vary wildly by device and it cannot be corrected); ElevenLabs or OpenAI TTS (good quality, but paid and network-dependent).
+
+*Spike:* confirm the chosen Kokoro Chinese voice reads `行`/`银行` from `reading` correctly and sounds acceptable before wiring `/api/tts`. This does not change the approach, only the voice and model choice.
 
 ### 5. IndexedDB for cards and audio, no backend database
 
@@ -156,7 +158,8 @@ editable draft  --discard--> (done)
       |
       +--> save card (audioStatus: generating)
       |
-      +--> POST /api/tts { reading } --> cache blob (audioStatus: ready)
+      +--> POST /api/tts { chinese, reading } --> local Kokoro sidecar
+      |                                         --> cache WAV blob (audioStatus: ready)
                                        \--> on failure: audioStatus: missing
 ```
 
@@ -167,23 +170,23 @@ Due cards are read from IndexedDB, sorted by `due`. Front shows Chinese only; re
 ## Risks / Trade-offs
 
 - **Browser storage eviction** — iOS and Android can clear site storage. → Request persistent storage, promote home-screen install, keep export one tap away, and state the backup expectation in the UI.
-- **Polyphonic characters read wrongly by TTS** — the exact failure mode this design targets. → Prefer a phoneme-capable voice and feed `reading`; allow per-card regeneration; keep `reading` editable.
+- **Polyphonic characters read wrongly by TTS** — the exact failure mode this design targets. → Convert `reading` to IPA and synthesize from phonemes; fall back to text G2P only when the reading is unusable; allow per-card regeneration; keep `reading` editable.
 - **OCR misreads on stylized, handwritten, or partial text** — screenshots are messy. → Editable draft before save; surface the recognized text with its confidence so the learner can fix it; never auto-save.
 - **The OCR sidecar is down or crashes** — a second process can fail independently of the Node server. → Health check at startup, a typed `503 OCR_UNAVAILABLE` error, and the image kept for a retry rather than a lost draft.
-- **Python runtime on the deployment host** — the sidecar needs Python 3.11 plus `rapidocr`, `onnxruntime`, `pypinyin`, and `jieba`. → A pinned requirements file and a start script documented in the README; the sidecar is part of the deployment, not an optional extra.
+- **Python runtime on the deployment host** — the two sidecars need Python 3.11 plus `rapidocr`, `onnxruntime`, `pypinyin`, `jieba`, `kokoro-onnx`, and `misaki[zh]`, and Kokoro downloads roughly 300 MB of model files on first setup. → Pinned requirements files, setup/start scripts, and a documented model download with a mirror override; both sidecars are part of the deployment, not optional extras.
 - **Extracted text still leaves the machine** — the privacy boundary is the image, not the words. → Send only the recognized Chinese text; state plainly in the README which fields are sent to DeepSeek and that no image is.
 - **Model JSON drift** — `json_object` mode is not schema-enforced and can still arrive malformed or off-schema. → Server-side Zod validation, one retry, then a clean error; the client only renders validated data.
 - **iOS capture friction** — no Web Share Target, so the loop is photo-library picker, not share sheet. → Design the capture button for the picker first; add Android share target later if it proves to increase usage.
-- **Latency and cost per card** — local OCR plus one short text call plus TTS. → The image never leaves the machine, the text call is small and cached audio is reused; at personal volume the monthly cost stays negligible.
+- **Latency and cost per card** — local OCR, one short text call, and local CPU synthesis. → The image and TTS audio never leave the machine, the text call is small, and cached audio is reused; TTS adds no per-character cost, at the price of slower CPU synthesis than a cloud voice.
 - **Audio unavailable offline** — a card saved while the network was down has no audio. → The review spec allows an "audio unavailable" state; regenerate when back online.
-- **TTS provider lock-in** — SSML phoneme syntax is provider-specific. → Keep `/api/tts` as the single boundary and the card's `reading` provider-neutral, so the provider can be swapped without touching stored cards.
+- **TTS engine lock-in** — Kokoro's phoneme token set and the pinyin→IPA mapping are model-specific. → Keep `/api/tts` as the single boundary and the card's `reading` provider-neutral; only the sidecar knows Kokoro, so the engine can be swapped without touching stored cards.
 - **AI provider lock-in** — DeepSeek's OpenAI-compatible JSON mode is one vendor's dialect. → Keep the call behind `server/analyze.ts` with a provider-neutral prompt and Zod-validated output, so another text provider can replace it without changing the client or stored cards.
 
 ## Migration Plan
 
-Greenfield: no migration. Deployment is a single Node build — the Vite client bundled into `dist/`, served by the Express process — with provider keys in server environment variables; rollback is redeploying the previous build. Because data lives on the device, a rollback never touches learner cards, and a storage-schema change must include a client-side upgrade path in Dexie.
+Greenfield: no migration. Deployment is a Node build — the Vite client bundled into `dist/`, served by the Express process — plus the OCR and TTS sidecars, with the remaining provider key (DeepSeek) in server environment variables; rollback is redeploying the previous build. Because data lives on the device, a rollback never touches learner cards, and a storage-schema change must include a client-side upgrade path in Dexie.
 
 ## Open Questions
 
-- Which exact Azure voice and SSML phoneme alphabet to use for pinyin overrides, and whether it handles every polyphone encountered — verify with a small spike before wiring `/api/tts`.
+- Which Kokoro Chinese voice sounds best for the fixture cards, and whether the full or quantized ONNX model gives acceptable quality and latency on the target hardware — verify with `npm run check:tts`.
 - Whether to include audio in the export file (base64) for full device-to-device restore, or keep exports text-only and regenerate audio after import. Deferred; does not affect the specs or capture/review behavior.

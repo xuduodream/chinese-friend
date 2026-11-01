@@ -37,7 +37,7 @@ beforeEach(() => {
 describe('ExportButton', () => {
   it('downloads every stored card', async () => {
     const card = createCardFromDraft(draft, new Date('2026-01-01T09:00:00Z'), 'card-1')
-    card.audioBlob = new Blob(['audio'], { type: 'audio/mpeg' })
+    card.audioBlob = new Blob(['audio'], { type: 'audio/wav' })
     card.audioStatus = 'ready'
     toArray.mockResolvedValue([card])
 

@@ -68,7 +68,7 @@ beforeEach(async () => {
     return card.id
   })
   analyzeImage.mockReset().mockResolvedValue({ ...draft })
-  synthesizeAudio.mockReset().mockResolvedValue(new Blob(['audio'], { type: 'audio/mpeg' }))
+  synthesizeAudio.mockReset().mockResolvedValue(new Blob(['audio'], { type: 'audio/wav' }))
   downscaleImage.mockReset().mockResolvedValue('data:image/jpeg;base64,abc')
   isSupportedImage.mockReset().mockReturnValue(true)
 
@@ -144,7 +144,7 @@ describe('CaptureView', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('Generating audio…')
 
-    finish(new Blob(['audio'], { type: 'audio/mpeg' }))
+    finish(new Blob(['audio'], { type: 'audio/wav' }))
     await vi.waitFor(async () => {
       expect((await db.cards.toArray())[0]?.audioStatus).toBe('ready')
     })

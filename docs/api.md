@@ -1,11 +1,12 @@
 # API
 
-Both endpoints are served by the Express process. Provider keys stay on the
-server; the browser never receives them.
+Both endpoints are served by the Express process. The DeepSeek key stays on the
+server; the browser never receives it.
 
-`POST /api/analyze` also depends on the local OCR sidecar
-(`npm run ocr:dev`). The sidecar reads the image on the same machine; only the
-recognized Chinese text is sent to DeepSeek.
+`POST /api/analyze` depends on the local OCR sidecar (`npm run ocr:dev`), which
+reads the image on the same machine; only the recognized Chinese text is sent
+to DeepSeek. `POST /api/tts` depends on the local Kokoro TTS sidecar
+(`npm run tts:dev`) and makes no external request.
 
 Errors use one shape:
 
@@ -80,7 +81,7 @@ This needs the OCR sidecar (`npm run ocr:dev`) running and a valid
 
 ## POST /api/tts
 
-See [tts.md](tts.md) for the provider and pronunciation details. The contract is
+See [tts.md](tts.md) for the model and pronunciation details. The contract is
 documented here.
 
 **Request** (`application/json`):
@@ -89,7 +90,7 @@ documented here.
 { "chinese": "行", "reading": "xing2" }
 ```
 
-**Response** `200`: `audio/mpeg` bytes.
+**Response** `200`: `audio/wav` bytes (24 kHz, mono, 16-bit).
 
 **Errors**
 
@@ -97,8 +98,8 @@ documented here.
 | --- | --- | --- |
 | 400 | `INVALID_REQUEST` | Body is missing `chinese` or `reading` |
 | 415 | `UNSUPPORTED_CONTENT_TYPE` | Request is not `application/json` |
-| 503 | `TTS_NOT_CONFIGURED` | Azure Speech variables are not set |
-| 502 | `TTS_FAILED` | The provider failed or returned no audio |
+| 503 | `TTS_UNAVAILABLE` | The local TTS sidecar is not running |
+| 502 | `TTS_FAILED` | The sidecar failed or returned no audio |
 
 **Example**
 
@@ -106,5 +107,8 @@ documented here.
 curl -s http://localhost:3001/api/tts \
   -H 'Content-Type: application/json' \
   -d '{"chinese":"行","reading":"xing2"}' \
-  -o xing.mp3
+  -o xing.wav
 ```
+
+This needs the TTS sidecar (`npm run tts:dev`) running and its model
+downloaded (`npm run tts:setup`).

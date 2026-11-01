@@ -43,7 +43,7 @@ beforeEach(() => {
   loadDueCards.mockReset().mockResolvedValue([])
   gradeCard.mockReset().mockImplementation(async (id) => reviewCard(id))
   putCard.mockReset().mockResolvedValue('card-1')
-  synthesizeAudio.mockReset().mockResolvedValue(new Blob(['audio'], { type: 'audio/mpeg' }))
+  synthesizeAudio.mockReset().mockResolvedValue(new Blob(['audio'], { type: 'audio/wav' }))
 
   URL.createObjectURL = vi.fn(() => 'blob:audio')
   URL.revokeObjectURL = vi.fn()
@@ -166,7 +166,7 @@ describe('ReviewView', () => {
     loadDueCards.mockResolvedValue([
       reviewCard('card-1', {
         audioStatus: 'ready',
-        audioBlob: new Blob(['audio'], { type: 'audio/mpeg' })
+        audioBlob: new Blob(['audio'], { type: 'audio/wav' })
       })
     ])
 
@@ -188,7 +188,7 @@ describe('ReviewView', () => {
     loadDueCards.mockResolvedValue([
       reviewCard('card-1', {
         audioStatus: 'ready',
-        audioBlob: new Blob(['audio'], { type: 'audio/mpeg' })
+        audioBlob: new Blob(['audio'], { type: 'audio/wav' })
       })
     ])
     const wrapper = mount(ReviewView)

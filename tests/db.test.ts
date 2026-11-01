@@ -53,14 +53,14 @@ describe('card storage', () => {
 
   it('stores and reads the audio blob with the card', async () => {
     const card = createCardFromDraft(draft, new Date(), 'card-with-audio')
-    const audio = new Blob(['fake-mp3'], { type: 'audio/mpeg' })
+    const audio = new Blob(['fake-wav'], { type: 'audio/wav' })
     await database.cards.put({ ...card, audioBlob: audio, audioStatus: 'ready' })
 
     const stored = await database.cards.get('card-with-audio')
     expect(stored?.audioStatus).toBe('ready')
     expect(stored?.audioBlob).toBeInstanceOf(Blob)
-    expect(stored?.audioBlob?.type).toBe('audio/mpeg')
-    expect(await stored?.audioBlob?.text()).toBe('fake-mp3')
+    expect(stored?.audioBlob?.type).toBe('audio/wav')
+    expect(await stored?.audioBlob?.text()).toBe('fake-wav')
   })
 
   it('backfills the AI fields for cards saved before version 2', async () => {

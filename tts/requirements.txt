@@ -1,0 +1,5 @@
+# Local TTS sidecar. Kokoro runs on ONNX Runtime (no PyTorch), and misaki
+# converts the card's numbered pinyin into the IPA phonemes Kokoro speaks.
+kokoro-onnx==0.4.7
+misaki[zh]==0.7.4
+onnxruntime==1.31.1

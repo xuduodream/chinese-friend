@@ -16,7 +16,7 @@ This is a personal, single-user tool. The goal is a capture loop fast enough to 
 - Text-to-speech audio generated per card and cached on the device, so the card can be heard during review.
 - On-device card storage with a manual export/backup so cards survive browser storage eviction.
 - Spaced-repetition review of saved cards with audio playback.
-- A small server component that holds AI provider keys, plus a local Python OCR sidecar; learning data stays on the device, and screenshots never leave the learner's own machine.
+- A small server component that holds AI provider keys, plus local Python OCR and TTS sidecars; learning data stays on the device, and screenshots never leave the learner's own machine.
 - Only the recognized Chinese text may be sent to an AI provider; the source image may not.
 - Non-goals for this change: user accounts or multi-user support, recording the learner's own voice, splitting one screenshot into multiple cards, offline capture (analysis requires connectivity), and native app packaging.
 
@@ -34,7 +34,7 @@ None — this is a greenfield project with no existing specs.
 ## Impact
 
 - New codebase; no existing behavior to migrate.
-- External dependencies: a local RapidOCR sidecar (Python, ONNX Runtime) for extraction, a text-only DeepSeek API for translation/explanation/example, and one text-to-speech API for Mandarin audio.
+- External dependencies: a local RapidOCR sidecar (Python, ONNX Runtime) for extraction, a text-only DeepSeek API for translation/explanation/example, and a local Kokoro TTS sidecar (Python, ONNX Runtime) for Mandarin audio.
 - A small server endpoint is required to keep provider credentials off the device.
 - Client storage uses the browser's on-device database; no learning-data database or user accounts.
 - Deployment must be HTTPS-reachable from a phone and installable to the home screen.
