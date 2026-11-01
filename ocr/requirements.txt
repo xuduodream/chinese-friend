@@ -1,0 +1,6 @@
+# Local OCR sidecar. RapidOCR runs on ONNX Runtime (no PaddlePaddle), and
+# pypinyin supplies both the display pinyin and the TTS reading.
+rapidocr==3.10.0
+onnxruntime==1.31.1
+pypinyin==0.55.0
+jieba==0.42.1
