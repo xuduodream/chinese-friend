@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dev-dist/
+coverage/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python OCR sidecar
+ocr/.venv/
+ocr/.deps/
+__pycache__/
+*.py[cod]
+
+# Generated audio fixtures (npm run check:tts)
+fixtures/audio/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Logs and OS/editor noise
+*.log
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings; project skills and commands stay tracked
+.claude/settings.local.json
